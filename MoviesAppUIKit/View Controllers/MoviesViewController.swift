@@ -12,10 +12,14 @@ import Combine
 
 class MoviesViewController: UIViewController {
     
+    let viewModel = MoviesViewModel(httpClient: HttpClient())
+    var cancellables : Set<AnyCancellable> = []
+    
     lazy var searchBar: UISearchBar = {
         let searchBar = UISearchBar()
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         searchBar.placeholder = "Search"
+        searchBar.delegate = self
         return searchBar
     }()
         
@@ -32,6 +36,15 @@ class MoviesViewController: UIViewController {
         
         searchBar.delegate = self
         setupUI()
+        
+        viewModel.$isLoadingCompleted
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] completed in
+                if completed{
+                    self?.moviesTableView.reloadData()
+                }
+            }.store(in: &cancellables)
+        
         
     }
         
@@ -65,20 +78,25 @@ class MoviesViewController: UIViewController {
 extension MoviesViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        10
+        return viewModel.movies.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
+        let movie = self.viewModel.movies[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "MovieTableViewCell", for: indexPath)
         var content = cell.defaultContentConfiguration()
-        content.text = "Hello World"
+        content.text = movie.title
         cell.contentConfiguration = content
         return cell
     }
 }
 
 extension MoviesViewController: UISearchBarDelegate {
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        print("search bar delegate")
+        viewModel.setSearchText(searchText: searchText)
+    }
     
 }
 
@@ -95,8 +113,8 @@ struct MoviesViewControllerRepresentable: UIViewControllerRepresentable {
     }
 }
 
-#Preview {
-    MoviesViewControllerRepresentable()
-}
+//#Preview {
+//    MoviesViewControllerRepresentable()
+//}
 
 
